@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulador educativo de compuertas lógicas</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --ink: #162033;
+      --muted: #5d6b82;
+      --line: #d8e0ef;
+      --primary: #1d4ed8;
+      --primary-dark: #173b9b;
+      --accent: #0f766e;
+      --danger: #b91c1c;
+      --warning: #a16207;
+      --ok: #15803d;
+      --off: #e5e7eb;
+      --shadow: 0 12px 30px rgba(15, 23, 42, .10);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #dbeafe 0, transparent 30%), var(--bg);
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    header {
+      padding: 34px 20px 24px;
+      background: linear-gradient(135deg, #0f172a, #1d4ed8);
+      color: white;
+    }
+
+    header .wrap, main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 3rem);
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      max-width: 920px;
+      margin: 0;
+      color: #dbeafe;
+      font-size: 1.05rem;
+    }
+
+    main {
+      padding: 22px 0 48px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(320px, .88fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .card h2, .card h3 {
+      margin: 0 0 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control-group {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #f8fafc;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #263650;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      background: white;
+      color: var(--ink);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    select:focus, input:focus, button:focus {
+      outline: 3px solid rgba(37, 99, 235, .24);
+      outline-offset: 2px;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .bit-btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 800;
+      min-width: 76px;
+      cursor: pointer;
+      background: var(--off);
+      color: #334155;
+      transition: transform .12s ease, background .12s ease, color .12s ease;
+    }
+
+    .bit-btn[aria-pressed="true"] {
+      background: var(--primary);
+      color: white;
+    }
+
+    .bit-btn:hover { transform: translateY(-1px); }
+
+    .stage {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #f8fbff, #eef4ff);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .wire {
+      stroke: #64748b;
+      stroke-width: 5;
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke .2s ease, opacity .2s ease;
+    }
+
+    .wire.on { stroke: #16a34a; }
+    .wire.off { stroke: #94a3b8; opacity: .65; }
+
+    .gate-shape {
+      fill: #ffffff;
+      stroke: #1e3a8a;
+      stroke-width: 4;
+      filter: drop-shadow(0 8px 10px rgba(15, 23, 42, .14));
+    }
+
+    .gate-label {
+      font-weight: 900;
+      fill: #1e3a8a;
+      font-size: 27px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    .node-label {
+      font-weight: 800;
+      fill: #0f172a;
+      font-size: 18px;
+      text-anchor: middle;
+    }
+
+    .bit-circle {
+      fill: #e2e8f0;
+      stroke: #94a3b8;
+      stroke-width: 3;
+    }
+
+    .bit-circle.on {
+      fill: #dcfce7;
+      stroke: #16a34a;
+    }
+
+    .out-bulb {
+      fill: #fee2e2;
+      stroke: #dc2626;
+      stroke-width: 4;
+      transition: fill .2s ease, stroke .2s ease;
+    }
+
+    .out-bulb.on {
+      fill: #bbf7d0;
+      stroke: #16a34a;
+    }
+
+    .result-panel {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      min-height: 74px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.35rem;
+      margin-top: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+    }
+
+    .expression {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #0f172a;
+      color: #e0f2fe;
+      border-radius: 14px;
+      padding: 13px 14px;
+      overflow-x: auto;
+      font-size: 1rem;
+      margin-bottom: 12px;
+    }
+
+    .explanation {
+      background: #ecfeff;
+      border-left: 5px solid var(--accent);
+      padding: 12px 14px;
+      border-radius: 12px;
+      color: #164e63;
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      font-size: .95rem;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+
+    th {
+      background: #1e3a8a;
+      color: white;
+      font-weight: 800;
+    }
+
+    tr.current {
+      background: #dcfce7;
+      font-weight: 900;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn, .secondary-btn, .primary-btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .tab-btn {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .primary-btn {
+      background: var(--primary);
+      color: white;
+    }
+
+    .primary-btn:hover { background: var(--primary-dark); }
+
+    .secondary-btn {
+      background: #e0f2fe;
+      color: #075985;
+    }
+
+    .mode { display: none; }
+    .mode.active { display: block; }
+
+    .combo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .challenge {
+      display: grid;
+      gap: 12px;
+    }
+
+    .challenge-box {
+      border: 1px dashed #93c5fd;
+      background: #eff6ff;
+      padding: 14px;
+      border-radius: 14px;
+    }
+
+    .feedback {
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-weight: 800;
+      display: none;
+    }
+
+    .feedback.ok {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .feedback.bad {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background: #f8fafc;
+      margin-top: 14px;
+    }
+
+    summary {
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .pedagogy {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: .92rem;
+      margin: 8px 0 0;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    footer {
+      text-align: center;
+      color: #64748b;
+      font-size: .9rem;
+      margin-top: 24px;
+    }
+
+    @media (max-width: 920px) {
+      .grid, .pedagogy { grid-template-columns: 1fr; }
+      .controls, .result-panel, .combo-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Simulador educativo de compuertas lógicas</h1>
+      <p class="subtitle">Explora cómo las entradas binarias producen salidas mediante compuertas AND, OR, NOT, NAND, NOR, XOR y XNOR. El simulador integra diagrama visual, tabla de verdad, expresión booleana y retos de verificación.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" aria-label="Simulador principal">
+      <article class="card">
+        <div class="tabs" role="tablist" aria-label="Modos de uso">
+          <button class="tab-btn active" data-mode="basic" role="tab" aria-selected="true">Modo exploración</button>
+          <button class="tab-btn" data-mode="combo" role="tab" aria-selected="false">Circuito combinado</button>
+          <button class="tab-btn" data-mode="challenge" role="tab" aria-selected="false">Reto rápido</button>
+        </div>
+
+        <div id="mode-basic" class="mode active">
+          <div class="controls">
+            <div class="control-group">
+              <label for="gateSelect">Compuerta</label>
+              <select id="gateSelect">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+                <option value="NOT">NOT</option>
+                <option value="NAND">NAND</option>
+                <option value="NOR">NOR</option>
+                <option value="XOR">XOR</option>
+                <option value="XNOR">XNOR</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Entrada A</label>
+              <button id="btnA" class="bit-btn" aria-pressed="false" aria-label="Alternar entrada A">A = 0</button>
+            </div>
+            <div class="control-group" id="groupB">
+              <label>Entrada B</label>
+              <button id="btnB" class="bit-btn" aria-pressed="false" aria-label="Alternar entrada B">B = 0</button>
+            </div>
+          </div>
+
+          <div class="stage" aria-label="Diagrama visual de la compuerta seleccionada">
+            <svg viewBox="0 0 900 360" role="img" aria-labelledby="svgTitle svgDesc">
+              <title id="svgTitle">Diagrama de compuerta lógica</title>
+              <desc id="svgDesc">Las líneas indican entradas binarias A y B, la compuerta seleccionada y la salida lógica obtenida.</desc>
+
+              <path id="wireA" class="wire off" d="M90 110 H300" />
+              <path id="wireB" class="wire off" d="M90 250 H300" />
+              <path id="wireOut" class="wire off" d="M590 180 H770" />
+
+              <circle id="circleA" class="bit-circle" cx="90" cy="110" r="34" />
+              <text id="labelA" class="node-label" x="90" y="116">A=0</text>
+
+              <circle id="circleB" class="bit-circle" cx="90" cy="250" r="34" />
+              <text id="labelB" class="node-label" x="90" y="256">B=0</text>
+
+              <rect class="gate-shape" x="300" y="80" rx="30" ry="30" width="290" height="200" />
+              <text id="gateSvgLabel" class="gate-label" x="445" y="180">AND</text>
+
+              <circle id="bulb" class="out-bulb" cx="790" cy="180" r="42" />
+              <text id="labelOut" class="node-label" x="790" y="187">S=0</text>
+            </svg>
+          </div>
+
+          <div class="result-panel" aria-live="polite">
+            <div class="metric"><span>Entrada A</span><strong id="metricA">0</strong></div>
+            <div class="metric" id="metricBBox"><span>Entrada B</span><strong id="metricB">0</strong></div>
+            <div class="metric"><span>Salida S</span><strong id="metricOut">0</strong></div>
+            <div class="metric"><span>Lectura</span><strong id="metricReading">Falso</strong></div>
+          </div>
+
+          <div class="expression" id="expressionBox">S = A · B</div>
+          <p class="explanation" id="explanationBox">AND produce 1 únicamente cuando ambas entradas valen 1.</p>
+        </div>
+
+        <div id="mode-combo" class="mode">
+          <h2>Circuito combinado de dos niveles</h2>
+          <p class="small">Construye una expresión del tipo <strong>S = G2(G1(A,B), C)</strong>. Esto permite observar cómo se encadenan compuertas para formar circuitos lógicos más complejos.</p>
+
+          <div class="combo-grid">
+            <div class="control-group">
+              <label for="gate1Select">G1 entre A y B</label>
+              <select id="gate1Select">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+                <option value="NAND">NAND</option>
+                <option value="NOR">NOR</option>
+                <option value="XOR">XOR</option>
+                <option value="XNOR">XNOR</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="gate2Select">G2 entre X y C</label>
+              <select id="gate2Select">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+                <option value="NAND">NAND</option>
+                <option value="NOR">NOR</option>
+                <option value="XOR">XOR</option>
+                <option value="XNOR">XNOR</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label>Entradas</label>
+              <div class="toggle-row">
+                <button id="btnCA" class="bit-btn" aria-pressed="false">A = 0</button>
+                <button id="btnCB" class="bit-btn" aria-pressed="false">B = 0</button>
+                <button id="btnCC" class="bit-btn" aria-pressed="false">C = 0</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stage">
+            <svg viewBox="0 0 980 390" role="img" aria-label="Circuito combinado de dos compuertas">
+              <path id="cwA" class="wire off" d="M70 90 H230" />
+              <path id="cwB" class="wire off" d="M70 210 H230" />
+              <path id="cwX" class="wire off" d="M420 150 H560" />
+              <path id="cwC" class="wire off" d="M70 310 H560" />
+              <path id="cwS" class="wire off" d="M760 230 H890" />
+
+              <circle id="ccA" class="bit-circle" cx="70" cy="90" r="30" />
+              <text id="ctA" class="node-label" x="70" y="96">A=0</text>
+              <circle id="ccB" class="bit-circle" cx="70" cy="210" r="30" />
+              <text id="ctB" class="node-label" x="70" y="216">B=0</text>
+              <circle id="ccC" class="bit-circle" cx="70" cy="310" r="30" />
+              <text id="ctC" class="node-label" x="70" y="316">C=0</text>
+
+              <rect class="gate-shape" x="230" y="55" rx="26" ry="26" width="190" height="190" />
+              <text id="g1Label" class="gate-label" x="325" y="150">AND</text>
+              <text id="xLabel" class="node-label" x="490" y="138">X=0</text>
+
+              <rect class="gate-shape" x="560" y="135" rx="26" ry="26" width="200" height="190" />
+              <text id="g2Label" class="gate-label" x="660" y="230">AND</text>
+
+              <circle id="cBulb" class="out-bulb" cx="910" cy="230" r="40" />
+              <text id="cOutLabel" class="node-label" x="910" y="237">S=0</text>
+            </svg>
+          </div>
+
+          <div class="expression" id="comboExpression">X = A · B | S = X · C</div>
+          <p class="explanation" id="comboExplanation">El primer nivel calcula X. Luego X se combina con C en una segunda compuerta para obtener la salida final S.</p>
+        </div>
+
+        <div id="mode-challenge" class="mode">
+          <h2>Reto rápido de razonamiento lógico</h2>
+          <div class="challenge">
+            <div class="challenge-box">
+              <p id="challengeText"><strong>Reto:</strong> selecciona una compuerta que cumpla la condición indicada.</p>
+            </div>
+            <div class="control-group">
+              <label for="challengeGate">Tu respuesta</label>
+              <select id="challengeGate">
+                <option value="AND">AND</option>
+                <option value="OR">OR</option>
+                <option value="NOT">NOT</option>
+                <option value="NAND">NAND</option>
+                <option value="NOR">NOR</option>
+                <option value="XOR">XOR</option>
+                <option value="XNOR">XNOR</option>
+              </select>
+            </div>
+            <div class="toggle-row">
+              <button id="checkChallenge" class="primary-btn">Comprobar respuesta</button>
+              <button id="newChallenge" class="secondary-btn">Nuevo reto</button>
+            </div>
+            <div id="challengeFeedback" class="feedback" aria-live="polite"></div>
+          </div>
+        </div>
+      </article>
+
+      <aside class="card">
+        <h2>Tabla de verdad</h2>
+        <p class="small">La fila resaltada corresponde a los valores actuales de entrada.</p>
+        <div id="truthTableContainer"></div>
+
+        <details open>
+          <summary>Guía conceptual</summary>
+          <p><strong>Compuerta lógica:</strong> dispositivo o abstracción computacional que recibe una o más entradas binarias y produce una salida binaria según una regla booleana.</p>
+          <p><strong>Tabla de verdad:</strong> representación exhaustiva de todas las combinaciones posibles de entrada y su salida correspondiente.</p>
+          <p><strong>Expresión booleana:</strong> forma simbólica de representar la operación lógica. Por ejemplo, AND puede escribirse como <code>S = A · B</code>.</p>
+        </details>
+      </aside>
+    </section>
+
+    <section class="pedagogy" aria-label="Actividad educativa">
+      <article class="card">
+        <h2>Actividad sugerida para estudiantes</h2>
+        <ol>
+          <li>Selecciona una compuerta y completa manualmente su tabla de verdad antes de usar el simulador.</li>
+          <li>Activa las entradas A y B para comprobar si tu predicción fue correcta.</li>
+          <li>Explica con tus palabras en qué casos la salida es 1 y en qué casos es 0.</li>
+          <li>En el modo circuito combinado, construye una expresión de dos niveles y describe el proceso lógico paso a paso.</li>
+          <li>Propón un caso cotidiano que pueda representarse con una compuerta lógica, por ejemplo: acceso permitido, alarma, votación o encendido automático.</li>
+        </ol>
+      </article>
+      <article class="card">
+        <h2>Preguntas de reflexión</h2>
+        <ol>
+          <li>¿Qué diferencia conceptual existe entre OR y XOR?</li>
+          <li>¿Por qué NAND y NOR se consideran compuertas relevantes para construir circuitos?</li>
+          <li>¿Qué ocurre cuando se encadenan dos compuertas?</li>
+          <li>¿Cómo se relaciona una tabla de verdad con la toma de decisiones computacional?</li>
+          <li>¿Qué limitaciones tiene este simulador frente a un circuito físico real?</li>
+        </ol>
+      </article>
+    </section>
+
+    <footer>
+      Simulador educativo desarrollado con HTML, CSS y JavaScript. Recurso abierto para docencia universitaria en informática educativa.
+    </footer>
+  </main>
+
+  <script>
+    const gates = {
+      AND: {
+        arity: 2,
+        symbol: 'S = A · B',
+        explain: 'AND produce 1 únicamente cuando ambas entradas valen 1.',
+        fn: (a, b) => a && b
+      },
+      OR: {
+        arity: 2,
+        symbol: 'S = A + B',
+        explain: 'OR produce 1 cuando al menos una de las entradas vale 1.',
+        fn: (a, b) => a || b
+      },
+      NOT: {
+        arity: 1,
+        symbol: 'S = ¬A',
+        explain: 'NOT invierte la entrada: si A vale 1, la salida vale 0; si A vale 0, la salida vale 1.',
+        fn: (a) => !a
+      },
+      NAND: {
+        arity: 2,
+        symbol: 'S = ¬(A · B)',
+        explain: 'NAND es la negación de AND. Solo produce 0 cuando ambas entradas valen 1.',
+        fn: (a, b) => !(a && b)
+      },
+      NOR: {
+        arity: 2,
+        symbol: 'S = ¬(A + B)',
+        explain: 'NOR es la negación de OR. Produce 1 únicamente cuando ambas entradas valen 0.',
+        fn: (a, b) => !(a || b)
+      },
+      XOR: {
+        arity: 2,
+        symbol: 'S = A ⊕ B',
+        explain: 'XOR produce 1 cuando las entradas son diferentes.',
+        fn: (a, b) => Boolean(a) !== Boolean(b)
+      },
+      XNOR: {
+        arity: 2,
+        symbol: 'S = ¬(A ⊕ B)',
+        explain: 'XNOR produce 1 cuando las entradas son iguales.',
+        fn: (a, b) => Boolean(a) === Boolean(b)
+      }
+    };
+
+    const $ = (id) => document.getElementById(id);
+    let state = { A: false, B: false };
+    let comboState = { A: false, B: false, C: false };
+    let currentChallenge = null;
+
+    function bit(value) { return value ? 1 : 0; }
+
+    function setPressed(button, value, label) {
+      button.setAttribute('aria-pressed', value ? 'true' : 'false');
+      button.textContent = `${label} = ${bit(value)}`;
+    }
+
+    function applyWire(el, on) {
+      el.classList.toggle('on', Boolean(on));
+      el.classList.toggle('off', !on);
+    }
+
+    function applyCircle(el, on) {
+      el.classList.toggle('on', Boolean(on));
+    }
+
+    function evaluateGate(name, a, b = false) {
+      return gates[name].arity === 1 ? gates[name].fn(a) : gates[name].fn(a, b);
+    }
+
+    function updateBasic() {
+      const gate = $('gateSelect').value;
+      const meta = gates[gate];
+      const out = evaluateGate(gate, state.A, state.B);
+      const usesB = meta.arity === 2;
+
+      $('groupB').style.display = usesB ? 'block' : 'none';
+      $('metricBBox').style.display = usesB ? 'block' : 'none';
+      $('circleB').style.display = usesB ? 'block' : 'none';
+      $('labelB').style.display = usesB ? 'block' : 'none';
+      $('wireB').style.display = usesB ? 'block' : 'none';
+
+      setPressed($('btnA'), state.A, 'A');
+      setPressed($('btnB'), state.B, 'B');
+
+      $('gateSvgLabel').textContent = gate;
+      $('labelA').textContent = `A=${bit(state.A)}`;
+      $('labelB').textContent = `B=${bit(state.B)}`;
+      $('labelOut').textContent = `S=${bit(out)}`;
+      $('metricA').textContent = bit(state.A);
+      $('metricB').textContent = bit(state.B);
+      $('metricOut').textContent = bit(out);
+      $('metricReading').textContent = out ? 'Verdadero' : 'Falso';
+      $('expressionBox').textContent = meta.symbol;
+      $('explanationBox').textContent = meta.explain;
+
+      applyWire($('wireA'), state.A);
+      applyWire($('wireB'), state.B);
+      applyWire($('wireOut'), out);
+      applyCircle($('circleA'), state.A);
+      applyCircle($('circleB'), state.B);
+      $('bulb').classList.toggle('on', out);
+
+      renderTruthTable(gate, state.A, state.B);
+    }
+
+    function truthRows(gate) {
+      if (gates[gate].arity === 1) {
+        return [0, 1].map(a => ({ A: Boolean(a), B: null, S: evaluateGate(gate, Boolean(a)) }));
+      }
+      const rows = [];
+      [0, 1].forEach(a => {
+        [0, 1].forEach(b => {
+          rows.push({ A: Boolean(a), B: Boolean(b), S: evaluateGate(gate, Boolean(a), Boolean(b)) });
+        });
+      });
+      return rows;
+    }
+
+    function renderTruthTable(gate, a, b) {
+      const rows = truthRows(gate);
+      const usesB = gates[gate].arity === 2;
+      const head = usesB ? '<tr><th>A</th><th>B</th><th>S</th></tr>' : '<tr><th>A</th><th>S</th></tr>';
+      const body = rows.map(row => {
+        const current = usesB ? row.A === a && row.B === b : row.A === a;
+        if (usesB) {
+          return `<tr class="${current ? 'current' : ''}"><td>${bit(row.A)}</td><td>${bit(row.B)}</td><td>${bit(row.S)}</td></tr>`;
+        }
+        return `<tr class="${current ? 'current' : ''}"><td>${bit(row.A)}</td><td>${bit(row.S)}</td></tr>`;
+      }).join('');
+      $('truthTableContainer').innerHTML = `<table aria-label="Tabla de verdad de ${gate}">${head}${body}</table>`;
+    }
+
+    function updateCombo() {
+      const g1 = $('gate1Select').value;
+      const g2 = $('gate2Select').value;
+      const X = evaluateGate(g1, comboState.A, comboState.B);
+      const S = evaluateGate(g2, X, comboState.C);
+
+      setPressed($('btnCA'), comboState.A, 'A');
+      setPressed($('btnCB'), comboState.B, 'B');
+      setPressed($('btnCC'), comboState.C, 'C');
+
+      $('ctA').textContent = `A=${bit(comboState.A)}`;
+      $('ctB').textContent = `B=${bit(comboState.B)}`;
+      $('ctC').textContent = `C=${bit(comboState.C)}`;
+      $('xLabel').textContent = `X=${bit(X)}`;
+      $('cOutLabel').textContent = `S=${bit(S)}`;
+      $('g1Label').textContent = g1;
+      $('g2Label').textContent = g2;
+
+      applyWire($('cwA'), comboState.A);
+      applyWire($('cwB'), comboState.B);
+      applyWire($('cwX'), X);
+      applyWire($('cwC'), comboState.C);
+      applyWire($('cwS'), S);
+      applyCircle($('ccA'), comboState.A);
+      applyCircle($('ccB'), comboState.B);
+      applyCircle($('ccC'), comboState.C);
+      $('cBulb').classList.toggle('on', S);
+
+      $('comboExpression').textContent = `X = ${expressionForGate(g1, 'A', 'B')} | S = ${expressionForGate(g2, 'X', 'C')}`;
+      $('comboExplanation').textContent = `Primero se calcula X con ${g1}. Luego la salida X se combina con C mediante ${g2}. Resultado final: S = ${bit(S)}.`;
+      renderComboTable(g1, g2);
+    }
+
+    function expressionForGate(gate, x = 'A', y = 'B') {
+      switch (gate) {
+        case 'AND': return `${x} · ${y}`;
+        case 'OR': return `${x} + ${y}`;
+        case 'NAND': return `¬(${x} · ${y})`;
+        case 'NOR': return `¬(${x} + ${y})`;
+        case 'XOR': return `${x} ⊕ ${y}`;
+        case 'XNOR': return `¬(${x} ⊕ ${y})`;
+        case 'NOT': return `¬${x}`;
+        default: return `${x} ? ${y}`;
+      }
+    }
+
+    function renderComboTable(g1, g2) {
+      const rows = [];
+      [0,1].forEach(a => [0,1].forEach(b => [0,1].forEach(c => {
+        const A = Boolean(a), B = Boolean(b), C = Boolean(c);
+        const X = evaluateGate(g1, A, B);
+        const S = evaluateGate(g2, X, C);
+        const current = A === comboState.A && B === comboState.B && C === comboState.C;
+        rows.push(`<tr class="${current ? 'current' : ''}"><td>${a}</td><td>${b}</td><td>${c}</td><td>${bit(X)}</td><td>${bit(S)}</td></tr>`);
+      })));
+      $('truthTableContainer').innerHTML = `<table aria-label="Tabla de verdad de circuito combinado"><tr><th>A</th><th>B</th><th>C</th><th>X</th><th>S</th></tr>${rows.join('')}</table>`;
+    }
+
+    const challengePool = [
+      { text: 'La salida debe ser 1 únicamente cuando A=1 y B=1.', answer: 'AND', reason: 'AND solo se activa cuando ambas entradas son verdaderas.' },
+      { text: 'La salida debe ser 1 cuando al menos una entrada sea 1.', answer: 'OR', reason: 'OR se activa con A=1, B=1 o ambas.' },
+      { text: 'La salida debe ser 1 cuando A y B son diferentes.', answer: 'XOR', reason: 'XOR representa diferencia lógica entre dos entradas.' },
+      { text: 'La salida debe ser 1 cuando A y B son iguales.', answer: 'XNOR', reason: 'XNOR representa equivalencia lógica.' },
+      { text: 'La salida debe ser 0 únicamente cuando A=1 y B=1.', answer: 'NAND', reason: 'NAND es la negación de AND.' },
+      { text: 'La salida debe ser 1 únicamente cuando A=0 y B=0.', answer: 'NOR', reason: 'NOR es la negación de OR.' },
+      { text: 'La salida debe invertir una sola entrada A.', answer: 'NOT', reason: 'NOT cambia 0 por 1 y 1 por 0.' }
+    ];
+
+    function newChallenge() {
+      currentChallenge = challengePool[Math.floor(Math.random() * challengePool.length)];
+      $('challengeText').innerHTML = `<strong>Reto:</strong> ${currentChallenge.text}`;
+      $('challengeFeedback').className = 'feedback';
+      $('challengeFeedback').textContent = '';
+    }
+
+    function checkChallenge() {
+      const selected = $('challengeGate').value;
+      const feedback = $('challengeFeedback');
+      if (selected === currentChallenge.answer) {
+        feedback.className = 'feedback ok';
+        feedback.textContent = `Correcto. ${currentChallenge.reason}`;
+      } else {
+        feedback.className = 'feedback bad';
+        feedback.textContent = `Revisa tu respuesta. La compuerta esperada es ${currentChallenge.answer}: ${currentChallenge.reason}`;
+      }
+    }
+
+    function switchMode(mode) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const active = btn.dataset.mode === mode;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      document.querySelectorAll('.mode').forEach(panel => panel.classList.remove('active'));
+      $(`mode-${mode}`).classList.add('active');
+      if (mode === 'basic') updateBasic();
+      if (mode === 'combo') updateCombo();
+    }
+
+    $('btnA').addEventListener('click', () => { state.A = !state.A; updateBasic(); });
+    $('btnB').addEventListener('click', () => { state.B = !state.B; updateBasic(); });
+    $('gateSelect').addEventListener('change', updateBasic);
+
+    $('btnCA').addEventListener('click', () => { comboState.A = !comboState.A; updateCombo(); });
+    $('btnCB').addEventListener('click', () => { comboState.B = !comboState.B; updateCombo(); });
+    $('btnCC').addEventListener('click', () => { comboState.C = !comboState.C; updateCombo(); });
+    $('gate1Select').addEventListener('change', updateCombo);
+    $('gate2Select').addEventListener('change', updateCombo);
+
+    $('newChallenge').addEventListener('click', newChallenge);
+    $('checkChallenge').addEventListener('click', checkChallenge);
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => switchMode(btn.dataset.mode));
+    });
+
+    updateBasic();
+    newChallenge();
+  </script>
+</body>
+</html>
